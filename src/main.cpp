@@ -39,10 +39,6 @@ void drawText(const String& text) {
 void setup() {
   Serial.begin(112500);
 
-  while (!Serial) {
-    delay(100);
-  }
-
   Serial.println("Atmosphere Boi: v6");
 
   Wire.begin();
@@ -97,21 +93,21 @@ void setup() {
   drawText("Okay!");
 }
 
+float massConcentrationPm1p0;
+float massConcentrationPm2p5;
+float massConcentrationPm4p0;
+float massConcentrationPm10p0;
+float ambientHumidity;
+float ambientTemperature;
+float vocIndex;
+float noxIndex;
+float co2;
+
 void loop() {
   uint16_t error;
   char errorMessage[256];
 
   delay(1000);
-
-  // Read Measurement
-  float massConcentrationPm1p0;
-  float massConcentrationPm2p5;
-  float massConcentrationPm4p0;
-  float massConcentrationPm10p0;
-  float ambientHumidity;
-  float ambientTemperature;
-  float vocIndex;
-  float noxIndex;
 
   error = sen5x.readMeasuredValues(
     massConcentrationPm1p0,
@@ -132,26 +128,30 @@ void loop() {
     return;
   }
 
+  if (scd30.dataReady()) {
+    if (!scd30.read()){
+      Serial.println("Error reading sensor data");
+    }
+
+    co2 = scd30.CO2;
+  }
+
   Serial.print("MassConcentrationPm2p5:");
   Serial.print(massConcentrationPm2p5);
-  Serial.print("\t");
 
   if (!isnan(ambientHumidity)) {
     Serial.print("AmbientHumidity:");
-    Serial.print(ambientHumidity);
-    Serial.print("\t");
+    Serial.println(ambientHumidity);
   }
 
   if (!isnan(ambientTemperature)) {
     Serial.print("AmbientTemperature:");
-    Serial.print(ambientTemperature);
-    Serial.print("\t");
+    Serial.println(ambientTemperature);
   }
 
   if (!isnan(vocIndex)) {
     Serial.print("VocIndex:");
-    Serial.print(vocIndex);
-    Serial.print("\t");
+    Serial.println(vocIndex);
   }
 
   if (!isnan(noxIndex)) {
@@ -159,13 +159,41 @@ void loop() {
     Serial.println(noxIndex);
   }
 
-  if (scd30.dataReady()) {
-    if (!scd30.read()){
-      Serial.print("Error reading sensor data");
-    }
-
+  if (!isnan(co2)) {
     Serial.print("CO2: ");
-    Serial.print(scd30.CO2, 3);
+    Serial.print(co2, 3);
     Serial.println(" ppm");
   }
+
+  display.clearDisplay();
+
+  display.setCursor(0, 0);
+
+  display.println("Atmosphere Boi V6");
+
+  display.print("PM2.5: ");
+  display.print(massConcentrationPm2p5, 2);
+  display.println("ug/m3");
+
+  display.print("Humidity: ");
+  display.print(ambientHumidity, 2);
+  display.println("%");
+
+  display.print("Temperature: ");
+  display.print(ambientTemperature, 2);
+  display.println(" C");
+
+  display.print("VOC Index: ");
+  display.print(vocIndex, 2);
+  display.println("");
+
+  display.print("NOX Index: ");
+  display.print(noxIndex, 2);
+  display.println("");
+
+  display.print("CO2: ");
+  display.print(co2, 2);
+  display.println("ppm");
+
+  display.display();
 }
