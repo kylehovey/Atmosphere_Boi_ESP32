@@ -94,7 +94,7 @@ void setup() {
 
   Wire.begin();
 
-  String discoverPm = "{\"name\":\"Atmosphere Boi V6 PM2.5\",\"stat_t\":\"home/sensor/atmosphereBoiV6/value\",\"unit_of_meas\":\"µg/m3\",\"dev_cla\":\"pm25\",\"frc_upd\":true,\"val_tpl\":\"{{ value_json.pm25|default(0) }}\"}";
+  String discoverPm = "{\"name\":\"Atmosphere Boi V6 PM2.5\",\"stat_t\":\"home/sensor/atmosphereBoiV6/value\",\"unit_of_meas\":\"µg/m³\",\"dev_cla\":\"pm25\",\"frc_upd\":true,\"val_tpl\":\"{{ value_json.pm25|default(0) }}\"}";
   String discoverHu = "{\"name\":\"Atmosphere Boi V6 Humidity\",\"stat_t\":\"home/sensor/atmosphereBoiV6/value\",\"unit_of_meas\":\"%\",\"dev_cla\":\"humidity\",\"frc_upd\":true,\"val_tpl\":\"{{ value_json.humidity|default(0) }}\"}";
   String discoverTe = "{\"name\":\"Atmosphere Boi V6 Temperature\",\"stat_t\":\"home/sensor/atmosphereBoiV6/value\",\"unit_of_meas\":\"˚F\",\"dev_cla\":\"temperature\",\"frc_upd\":true,\"val_tpl\":\"{{ value_json.temperature|default(0) }}\"}";
   String discoverVO = "{\"name\":\"Atmosphere Boi V6 VOC Index\",\"stat_t\":\"home/sensor/atmosphereBoiV6/value\",\"dev_cla\":\"aqi\",\"frc_upd\":true,\"val_tpl\":\"{{ value_json.voc|default(0) }}\"}";
