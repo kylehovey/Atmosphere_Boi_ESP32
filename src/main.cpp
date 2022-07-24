@@ -158,15 +158,26 @@ void setup() {
   drawText("Okay!");
 }
 
+float avgCount = 0;
+
 float massConcentrationPm1p0;
+float massConcentrationPm1p0_avg;
 float massConcentrationPm2p5;
+float massConcentrationPm2p5_avg;
 float massConcentrationPm4p0;
+float massConcentrationPm4p0_avg;
 float massConcentrationPm10p0;
+float massConcentrationPm10p0_avg;
 float ambientHumidity;
+float ambientHumidity_avg;
 float ambientTemperature;
+float ambientTemperature_avg;
 float vocIndex;
+float vocIndex_avg;
 float noxIndex;
+float noxIndex_avg;
 float co2;
+float co2_avg;
 
 void loop() {
   uint16_t error;
@@ -243,13 +254,29 @@ void loop() {
   }
 
   if (allStatsReady) {
+    massConcentrationPm1p0_avg = (massConcentrationPm1p0 + massConcentrationPm1p0_avg * avgCount) / (avgCount + 1);
+    massConcentrationPm2p5_avg = (massConcentrationPm2p5 + massConcentrationPm2p5_avg * avgCount) / (avgCount + 1);
+    massConcentrationPm4p0_avg = (massConcentrationPm4p0 + massConcentrationPm4p0_avg * avgCount) / (avgCount + 1);
+    massConcentrationPm10p0_avg = (massConcentrationPm10p0 + massConcentrationPm10p0_avg * avgCount) / (avgCount + 1);
+    ambientHumidity_avg = (ambientHumidity + ambientHumidity_avg * avgCount) / (avgCount + 1);
+    ambientTemperature_avg = (ambientTemperature + ambientTemperature_avg * avgCount) / (avgCount + 1);
+    vocIndex_avg = (vocIndex + vocIndex_avg * avgCount) / (avgCount + 1);
+    noxIndex_avg = (noxIndex + noxIndex_avg * avgCount) / (avgCount + 1);
+    co2_avg = (co2 + co2_avg * avgCount) / (avgCount + 1);
+
+    avgCount += 1;
+  }
+
+  if (avgCount == 5) {
+    avgCount = 0;
+
     Serial.println("Posting stats.");
-    auto state = String("{\"humidity\":") + String(ambientHumidity, 2) + String(",");
-    state += String("\"temperature\":") + String(ambientTemperature * 9/5 + 32, 2) + String(",");
-    state += String("\"voc\":") + String(vocIndex, 2) + String(",");
-    state += String("\"nox\":") + String(noxIndex, 2) + String(",");
-    state += String("\"co2\":") + String(co2, 2) + String(",");
-    state += String("\"pm25\":") + String(massConcentrationPm2p5, 2) + String("}");
+    auto state = String("{\"humidity\":") + String(ambientHumidity_avg, 2) + String(",");
+    state += String("\"temperature\":") + String(ambientTemperature_avg * 9/5 + 32, 2) + String(",");
+    state += String("\"voc\":") + String(vocIndex_avg, 2) + String(",");
+    state += String("\"nox\":") + String(noxIndex_avg, 2) + String(",");
+    state += String("\"co2\":") + String(co2_avg, 2) + String(",");
+    state += String("\"pm25\":") + String(massConcentrationPm2p5_avg, 2) + String("}");
 
     Serial.println("Publishing the following:");
     Serial.println(state);
