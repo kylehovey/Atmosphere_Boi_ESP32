@@ -25,6 +25,7 @@ const char* ssid = "***REMOVED***";
 const char* password = "***REMOVED***";
 
 const char* mqtt_server = "192.168.100.42";
+const char* mqtt_client_id = "Atmosphere_Boi_V6";
 const char* mqtt_state_topic = "home/sensor/atmosphereBoiV6/value";
 
 WiFiClient espClient;
@@ -41,23 +42,43 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 SensirionI2CSen5x sen5x;
 Adafruit_SCD30  scd30;
 
-void reconnect() {
-  while (!client.connected()) {
-    Serial.print("Attempting MQTT connection...");
-    String clientId = "Atmosphere_Boi_V6";
+class MqttLiason {
+  private:
+    const char* clientId;
+    const char* server;
 
-    if (client.connect(clientId.c_str())) {
-      Serial.println("connected");
-      return;
-    } else {
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
+  public:
+    PubSubClient client;
 
-      delay(5000);
+    MqttLiason(PubSubClient& client, const char* clientId, const char* server) : client(client), clientId(clientId), server(server) {};
+
+    bool connect() {
+      this->client.setServer(this->server, 1883);
+
+      return this->client.connect(this->clientId);
     }
-  }
-}
+
+    bool ready() {
+      return this->client.connected();
+    }
+
+    void reconnect() {
+      while (!this->client.connected()) {
+        Serial.print("Attempting MQTT connection...");
+
+        if (this->connect()) {
+          Serial.println("connected");
+          return;
+        } else {
+          Serial.print("failed, rc=");
+          Serial.print(this->client.state());
+          Serial.println(" try again in 5 seconds");
+
+          delay(5000);
+        }
+      }
+    }
+} liason(client, mqtt_client_id, mqtt_server);
 
 void drawText(const String& text) {
   display.clearDisplay();
@@ -71,6 +92,28 @@ void drawText(const String& text) {
   display.display();
 }
 
+void initMqtt() {
+  liason.connect();
+
+  if (!liason.ready()) {
+    return;
+  }
+
+  String discoverPm = "{\"name\":\"Atmosphere Boi V6 PM2.5\",\"stat_t\":\"home/sensor/atmosphereBoiV6/value\",\"unit_of_meas\":\"µg/m³\",\"dev_cla\":\"pm25\",\"frc_upd\":true,\"val_tpl\":\"{{ value_json.pm25|default(0) }}\"}";
+  String discoverHu = "{\"name\":\"Atmosphere Boi V6 Humidity\",\"stat_t\":\"home/sensor/atmosphereBoiV6/value\",\"unit_of_meas\":\"%\",\"dev_cla\":\"humidity\",\"frc_upd\":true,\"val_tpl\":\"{{ value_json.humidity|default(0) }}\"}";
+  String discoverTe = "{\"name\":\"Atmosphere Boi V6 Temperature\",\"stat_t\":\"home/sensor/atmosphereBoiV6/value\",\"unit_of_meas\":\"˚F\",\"dev_cla\":\"temperature\",\"frc_upd\":true,\"val_tpl\":\"{{ value_json.temperature|default(0) }}\"}";
+  String discoverVO = "{\"name\":\"Atmosphere Boi V6 VOC Index\",\"stat_t\":\"home/sensor/atmosphereBoiV6/value\",\"dev_cla\":\"aqi\",\"frc_upd\":true,\"val_tpl\":\"{{ value_json.voc|default(0) }}\"}";
+  String discoverNO = "{\"name\":\"Atmosphere Boi V6 NOX Index\",\"stat_t\":\"home/sensor/atmosphereBoiV6/value\",\"dev_cla\":\"aqi\",\"frc_upd\":true,\"val_tpl\":\"{{ value_json.nox|default(0) }}\"}";
+  String discoverCO = "{\"name\":\"Atmosphere Boi V6 CO2\",\"stat_t\":\"home/sensor/atmosphereBoiV6/value\",\"unit_of_meas\":\"ppm\",\"dev_cla\":\"carbon_dioxide\",\"frc_upd\":true,\"val_tpl\":\"{{ value_json.co2|default(0) }}\"}";
+
+  liason.client.publish("homeassistant/sensor/atmosphereBoiV6_pm25/config", discoverPm.c_str(), true);
+  liason.client.publish("homeassistant/sensor/atmosphereBoiV6_humidity/config", discoverHu.c_str(), true);
+  liason.client.publish("homeassistant/sensor/atmosphereBoiV6_temp/config", discoverTe.c_str(), true);
+  liason.client.publish("homeassistant/sensor/atmosphereBoiV6_voc/config", discoverVO.c_str(), true);
+  liason.client.publish("homeassistant/sensor/atmosphereBoiV6_nox/config", discoverNO.c_str(), true);
+  liason.client.publish("homeassistant/sensor/atmosphereBoiV6_co2/config", discoverCO.c_str(), true);
+}
+
 void setup() {
   Serial.begin(112500);
 
@@ -81,32 +124,12 @@ void setup() {
 
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("WiFi Failed!");
-    while (1) { delay(10); }
-  }
-
-  Serial.println(WiFi.localIP());
-
-  client.setServer(mqtt_server, 1883);
-
-  if (!client.connected()) {
-    reconnect();
+  } else {
+    initMqtt();
+    Serial.println(WiFi.localIP());
   }
 
   Wire.begin();
-
-  String discoverPm = "{\"name\":\"Atmosphere Boi V6 PM2.5\",\"stat_t\":\"home/sensor/atmosphereBoiV6/value\",\"unit_of_meas\":\"µg/m³\",\"dev_cla\":\"pm25\",\"frc_upd\":true,\"val_tpl\":\"{{ value_json.pm25|default(0) }}\"}";
-  String discoverHu = "{\"name\":\"Atmosphere Boi V6 Humidity\",\"stat_t\":\"home/sensor/atmosphereBoiV6/value\",\"unit_of_meas\":\"%\",\"dev_cla\":\"humidity\",\"frc_upd\":true,\"val_tpl\":\"{{ value_json.humidity|default(0) }}\"}";
-  String discoverTe = "{\"name\":\"Atmosphere Boi V6 Temperature\",\"stat_t\":\"home/sensor/atmosphereBoiV6/value\",\"unit_of_meas\":\"˚F\",\"dev_cla\":\"temperature\",\"frc_upd\":true,\"val_tpl\":\"{{ value_json.temperature|default(0) }}\"}";
-  String discoverVO = "{\"name\":\"Atmosphere Boi V6 VOC Index\",\"stat_t\":\"home/sensor/atmosphereBoiV6/value\",\"dev_cla\":\"aqi\",\"frc_upd\":true,\"val_tpl\":\"{{ value_json.voc|default(0) }}\"}";
-  String discoverNO = "{\"name\":\"Atmosphere Boi V6 NOX Index\",\"stat_t\":\"home/sensor/atmosphereBoiV6/value\",\"dev_cla\":\"aqi\",\"frc_upd\":true,\"val_tpl\":\"{{ value_json.nox|default(0) }}\"}";
-  String discoverCO = "{\"name\":\"Atmosphere Boi V6 CO2\",\"stat_t\":\"home/sensor/atmosphereBoiV6/value\",\"unit_of_meas\":\"ppm\",\"dev_cla\":\"carbon_dioxide\",\"frc_upd\":true,\"val_tpl\":\"{{ value_json.co2|default(0) }}\"}";
-
-  client.publish("homeassistant/sensor/atmosphereBoiV6_pm25/config", discoverPm.c_str(), true);
-  client.publish("homeassistant/sensor/atmosphereBoiV6_humidity/config", discoverHu.c_str(), true);
-  client.publish("homeassistant/sensor/atmosphereBoiV6_temp/config", discoverTe.c_str(), true);
-  client.publish("homeassistant/sensor/atmosphereBoiV6_voc/config", discoverVO.c_str(), true);
-  client.publish("homeassistant/sensor/atmosphereBoiV6_nox/config", discoverNO.c_str(), true);
-  client.publish("homeassistant/sensor/atmosphereBoiV6_co2/config", discoverCO.c_str(), true);
 
   Serial.println("Initializing SCD30");
   if (!scd30.begin()) {
@@ -281,7 +304,9 @@ void loop() {
     Serial.println("Publishing the following:");
     Serial.println(state);
 
-    client.publish(mqtt_state_topic, state.c_str());
+    if (liason.ready()) {
+      liason.client.publish(mqtt_state_topic, state.c_str());
+    }
   }
 
   display.clearDisplay();
@@ -316,5 +341,7 @@ void loop() {
 
   display.display();
 
-  client.loop();
+  if (liason.ready()) {
+    liason.client.loop();
+  }
 }
