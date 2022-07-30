@@ -28,6 +28,27 @@ const char* mqtt_server = "192.168.100.42";
 const char* mqtt_client_id = "Atmosphere_Boi_V6";
 const char* mqtt_state_topic = "home/sensor/atmosphereBoiV6/value";
 
+float avgCount = 0;
+
+float massConcentrationPm1p0;
+float massConcentrationPm1p0_avg;
+float massConcentrationPm2p5;
+float massConcentrationPm2p5_avg;
+float massConcentrationPm4p0;
+float massConcentrationPm4p0_avg;
+float massConcentrationPm10p0;
+float massConcentrationPm10p0_avg;
+float ambientHumidity;
+float ambientHumidity_avg;
+float ambientTemperature;
+float ambientTemperature_avg;
+float vocIndex;
+float vocIndex_avg;
+float noxIndex;
+float noxIndex_avg;
+float co2;
+float co2_avg;
+
 WiFiClient espClient;
 PubSubClient client(espClient);
 
@@ -61,33 +82,22 @@ class MqttLiason {
     bool ready() {
       return this->client.connected();
     }
-
-    void reconnect() {
-      while (!this->client.connected()) {
-        Serial.print("Attempting MQTT connection...");
-
-        if (this->connect()) {
-          Serial.println("connected");
-          return;
-        } else {
-          Serial.print("failed, rc=");
-          Serial.print(this->client.state());
-          Serial.println(" try again in 5 seconds");
-
-          delay(5000);
-        }
-      }
-    }
 } liason(client, mqtt_client_id, mqtt_server);
 
-void drawText(const String& text) {
+void initDisplay() {
+  Serial.println("Starting Display");
+  if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+    Serial.println("Failed to initialize display");
+    while (1) { delay(10); }
+  }
+
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.setTextWrap(true);
   display.setCursor(0, 0);
   display.cp437(true); 
-  display.print(text);
+  display.print("Okay!");
 
   display.display();
 }
@@ -114,11 +124,7 @@ void initMqtt() {
   liason.client.publish("homeassistant/sensor/atmosphereBoiV6_co2/config", discoverCO.c_str(), true);
 }
 
-void setup() {
-  Serial.begin(112500);
-
-  Serial.println("Atmosphere Boi: v6");
-
+void initWifi() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
@@ -128,24 +134,17 @@ void setup() {
     initMqtt();
     Serial.println(WiFi.localIP());
   }
+}
 
-  Wire.begin();
-
+void initScd30() {
   Serial.println("Initializing SCD30");
   if (!scd30.begin()) {
     Serial.println("Failed to find SCD30 chip");
     while (1) { delay(10); }
   }
+}
 
-  Serial.println("Starting Display");
-  if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    Serial.println("Failed to initialize display");
-    while (1) { delay(10); }
-  }
-
-  display.clearDisplay();
-  display.display();
-
+void initSen55() {
   Serial.println("Initializing SEN55");
   sen5x.begin(Wire);
 
@@ -177,30 +176,21 @@ void setup() {
     Serial.println(errorMessage);
     while (1) { delay(10); }
   }
-
-  drawText("Okay!");
 }
 
-float avgCount = 0;
+void setup() {
+  Serial.begin(112500);
+  Serial.println("Atmosphere Boi: v6");
 
-float massConcentrationPm1p0;
-float massConcentrationPm1p0_avg;
-float massConcentrationPm2p5;
-float massConcentrationPm2p5_avg;
-float massConcentrationPm4p0;
-float massConcentrationPm4p0_avg;
-float massConcentrationPm10p0;
-float massConcentrationPm10p0_avg;
-float ambientHumidity;
-float ambientHumidity_avg;
-float ambientTemperature;
-float ambientTemperature_avg;
-float vocIndex;
-float vocIndex_avg;
-float noxIndex;
-float noxIndex_avg;
-float co2;
-float co2_avg;
+  initWifi();
+
+  Wire.begin();
+
+  initScd30();
+  initSen55();
+
+  initDisplay();
+}
 
 void loop() {
   uint16_t error;
