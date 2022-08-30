@@ -46,8 +46,8 @@ float vocIndex;
 float vocIndex_avg;
 float noxIndex;
 float noxIndex_avg;
-float co2;
-float co2_avg;
+uint16_t co2;
+uint16_t co2_avg;
 float scd40Temp;
 float scd40Humidity;
 
@@ -281,7 +281,7 @@ void loop() {
     ambientHumidity_avg = (ambientHumidity + ambientHumidity_avg * avgCount) / (avgCount + 1);
     ambientTemperature_avg = (ambientTemperature + ambientTemperature_avg * avgCount) / (avgCount + 1);
     vocIndex_avg = (vocIndex + vocIndex_avg * avgCount) / (avgCount + 1);
-    co2_avg = (co2 + co2_avg * avgCount) / (avgCount + 1);
+    co2_avg = int(float(co2 + co2_avg * avgCount) / (avgCount + 1));
 
     avgCount += 1;
   }
