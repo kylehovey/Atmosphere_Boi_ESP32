@@ -140,10 +140,7 @@ void initWifi() {
 
 void initScd40() {
   Serial.println("Initializing SCD40");
-  if (!scd4x.begin(Wire);) {
-    Serial.println("Failed to find SCD40 chip");
-    while (1) { delay(10); }
-  }
+  scd4x.begin(Wire);
 }
 
 void initSen55() {
