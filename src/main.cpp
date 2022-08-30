@@ -21,8 +21,8 @@
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3D ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 
-const char* ssid = "***REMOVED***";
-const char* password = "***REMOVED***";
+const char* ssid = "CHANGEME";
+const char* password = "CHANGEME";
 
 const char* mqtt_server = "192.168.100.42";
 const char* mqtt_client_id = "Atmosphere_Boi_V6";
