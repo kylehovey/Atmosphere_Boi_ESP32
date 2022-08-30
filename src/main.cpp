@@ -2,7 +2,7 @@
 #include <PubSubClient.h>
 #include <WiFi.h>
 #include <SensirionI2CSen5x.h>
-#include <Adafruit_SCD30.h>
+#include <SensirionI2CScd4x.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Wire.h>
@@ -48,6 +48,8 @@ float noxIndex;
 float noxIndex_avg;
 float co2;
 float co2_avg;
+float scd40Temp;
+float scd40Humidity;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -61,7 +63,7 @@ IPAddress secondaryDNS(1, 0, 0, 1);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 SensirionI2CSen5x sen5x;
-Adafruit_SCD30  scd30;
+SensirionI2CScd4x scd4x;
 
 class MqttLiason {
   private:
@@ -136,16 +138,16 @@ void initWifi() {
   }
 }
 
-void initScd30() {
-  Serial.println("Initializing SCD30");
-  if (!scd30.begin()) {
-    Serial.println("Failed to find SCD30 chip");
+void initScd40() {
+  Serial.println("Initializing SCD40");
+  if (!scd4x.begin(Wire);) {
+    Serial.println("Failed to find SCD40 chip");
     while (1) { delay(10); }
   }
 }
 
 void initSen55() {
-  Serial.println("Initializing SEN55");
+  Serial.println("Initializing SEN54");
   sen5x.begin(Wire);
 
   uint16_t error;
@@ -186,7 +188,7 @@ void setup() {
 
   Wire.begin();
 
-  initScd30();
+  initScd40();
   initSen55();
 
   initDisplay();
@@ -217,12 +219,27 @@ void loop() {
     return;
   }
 
-  if (scd30.dataReady()) {
-    if (!scd30.read()){
-      Serial.println("Error reading sensor data");
-    }
+  bool scd40DataReady = false;
+  error = scd4x.getDataReadyFlag(scd40DataReady);
 
-    co2 = scd30.CO2;
+  if (error) {
+    Serial.print("Error trying to execute getDataReadyFlag(): ");
+    errorToString(error, errorMessage, 256);
+    Serial.println(errorMessage);
+
+    return;
+  }
+
+  if (scd40DataReady) {
+    error = scd4x.readMeasurement(co2, scd40Temp, scd40Humidity);
+
+    if (error) {
+      Serial.print("Error trying to read SCD40");
+      errorToString(error, errorMessage, 256);
+      Serial.println(errorMessage);
+
+      return;
+    }
   }
 
   bool allStatsReady = true;
@@ -251,13 +268,6 @@ void loop() {
     allStatsReady = false;
   }
 
-  if (!isnan(noxIndex)) {
-    Serial.print("NoxIndex:");
-    Serial.println(noxIndex);
-  } else {
-    allStatsReady = false;
-  }
-
   if (!isnan(co2)) {
     Serial.print("CO2: ");
     Serial.print(co2, 3);
@@ -274,7 +284,6 @@ void loop() {
     ambientHumidity_avg = (ambientHumidity + ambientHumidity_avg * avgCount) / (avgCount + 1);
     ambientTemperature_avg = (ambientTemperature + ambientTemperature_avg * avgCount) / (avgCount + 1);
     vocIndex_avg = (vocIndex + vocIndex_avg * avgCount) / (avgCount + 1);
-    noxIndex_avg = (noxIndex + noxIndex_avg * avgCount) / (avgCount + 1);
     co2_avg = (co2 + co2_avg * avgCount) / (avgCount + 1);
 
     avgCount += 1;
@@ -287,7 +296,6 @@ void loop() {
     auto state = String("{\"humidity\":") + String(ambientHumidity_avg, 2) + String(",");
     state += String("\"temperature\":") + String(ambientTemperature_avg * 9/5 + 32, 2) + String(",");
     state += String("\"voc\":") + String(vocIndex_avg, 2) + String(",");
-    state += String("\"nox\":") + String(noxIndex_avg, 2) + String(",");
     state += String("\"co2\":") + String(co2_avg, 2) + String(",");
     state += String("\"pm25\":") + String(massConcentrationPm2p5_avg, 2) + String("}");
 
@@ -319,10 +327,6 @@ void loop() {
 
   display.print("VOC Index: ");
   display.print(vocIndex, 2);
-  display.println("");
-
-  display.print("NOX Index: ");
-  display.print(noxIndex, 2);
   display.println("");
 
   display.print("CO2: ");
